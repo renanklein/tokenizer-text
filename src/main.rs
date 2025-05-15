@@ -2,6 +2,7 @@ use tiktoken_rs::{get_bpe_from_tokenizer, tokenizer::{self, get_tokenizer}};
 
 mod file_utils;
 mod simple_tokenizer;
+mod data_modifier;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
