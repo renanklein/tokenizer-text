@@ -7,19 +7,19 @@ pub struct GPTDatasetV1 {
 }
 
 impl GPTDatasetV1 {
-    pub fn new(tokenizer: CoreBPE, text: String, max_lenghth: u32, stride: u32) -> Self {
+     pub fn new(tokenizer: CoreBPE, text: String, max_length: u32, stride: u32) -> Self {
         let mut input_ids = Vec::new();
         let mut target_ids = Vec::new();
 
         let encoded = tokenizer.encode_with_special_tokens(text.as_str());
 
-        for i in (0..(encoded.len() as u32 - max_lenghth)).step_by(stride as usize) {
-            let input_chunk = encoded[i as usize..(i + max_lenghth) as usize]
+        for i in (0..(encoded.len() as u32 - max_length)).step_by(stride as usize) {
+            let input_chunk = encoded[i as usize..(i + max_length) as usize]
                 .into_iter()
                 .map(|x| *x as i32)
                 .collect::<Vec<_>>();
 
-            let target_chunk = encoded[(i + 1) as usize..(i + max_lenghth + 1) as usize]
+            let target_chunk = encoded[(i + 1) as usize..(i + max_length + 1) as usize]
                 .into_iter()
                 .map(|x| *x as i32)
                 .collect::<Vec<_>>();
@@ -36,5 +36,11 @@ impl GPTDatasetV1 {
             input_ids,
             target_ids,
         }
+    }
+
+    pub fn get_item(&self, index: usize) -> (Tensor, Tensor) {
+        let input = self.input_ids[index].copy();
+        let target = self.target_ids[index].copy();
+        (input, target)
     }
 }

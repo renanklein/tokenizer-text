@@ -19,31 +19,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => panic!("Error getting BPE tokenizer: {}", e),
     };
 
-    let encoded = tokenizer.encode_with_special_tokens(text.as_str());
 
-    let enc_sample = encoded.into_iter().skip(50).collect::<Vec<_>>();
+    let dataset = data_modifier::GPTDatasetV1::new(tokenizer, text, 256, 128);
 
-    let context_size  = 4;
-    let x = enc_sample.iter().take(context_size).collect::<Vec<_>>();
-    let y = enc_sample.iter().skip(1).take(context_size).collect::<Vec<_>>();
-    
-    println!("x: {:?}", x);
-    println!("y:      {:?}", y);
+    let length = dataset.input_ids.len();
 
+    for i in 0..length {
+        let input_ids = &dataset.input_ids[i];
+        let target_ids = &dataset.target_ids[i];
 
-    for i in 1..context_size  {
-        let desired = enc_sample[i];
-            let current = enc_sample.clone().iter().take(i).map(|x| {
-            match  tokenizer.decode(vec![*x]) {
-                Ok(decoded) => decoded,
-                Err(e) => panic!("Error decoding token: {}", e),
-            }
-        }).collect::<Vec<_>>().join(" ");
-
-        let desired_decoded = tokenizer.decode(vec![desired]).unwrap_or_else(|_| "Error decoding token".to_string());
-        println!("{} -------> {}", current, desired_decoded);
+        println!("Input IDs: {:?}", input_ids);
+        println!("Target IDs: {:?}", target_ids);
     }
-
+    
     Ok(())
 }
 
