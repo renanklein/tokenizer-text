@@ -9,3 +9,4 @@ reqwest = { version = "0.11", features = ["json"] }
 regex = "1.9"
 tiktoken-rs = "0.6.0"
 tch = "0.20.0"
+ai-dataloader = "0.6.2"

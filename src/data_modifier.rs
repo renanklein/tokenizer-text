@@ -8,6 +8,7 @@ pub struct GPTDatasetV1 {
 
 impl GPTDatasetV1 {
      pub fn new(tokenizer: CoreBPE, text: String, max_length: u32, stride: u32) -> Self {
+        let device = tch::Device::cuda_if_available();
         let mut input_ids = Vec::new();
         let mut target_ids = Vec::new();
 
@@ -24,8 +25,8 @@ impl GPTDatasetV1 {
                 .map(|x| *x as i32)
                 .collect::<Vec<_>>();
 
-            let input_tersor = Tensor::from_slice(&input_chunk);
-            let target_tensor = Tensor::from_slice(&target_chunk);
+            let input_tersor = Tensor::from_slice(&input_chunk).to_device(device);
+            let target_tensor = Tensor::from_slice(&target_chunk).to_device(device);
 
             input_ids.push(input_tersor);
             target_ids.push(target_tensor);
