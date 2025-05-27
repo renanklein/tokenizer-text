@@ -44,4 +44,9 @@ impl GPTDatasetV1 {
         let target = self.target_ids[index].copy();
         (input, target)
     }
+
+    pub fn get_input_tensor_batch(&self, batch_size: usize) -> Tensor {
+        let input_tensor = Tensor::stack(&self.input_ids[..batch_size], 0);
+        input_tensor
+    }
 }

@@ -22,7 +22,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let dataset = data_modifier::GPTDatasetV1::new(tokenizer, text, 4, 4);
 
-    let input_tensor = dataset.get_item(0);
+    let input_tensor = dataset.get_input_tensor_batch(8);
+    input_tensor.print();
 
     let vocab_size: i64 = 50257;
     let output_dim: i64 = 256;
@@ -33,6 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         ws_init: tch::nn::Init::Randn { mean: 0.0, stdev: 1.0 },
         padding_idx: -1,
     };
+
 
     tch::manual_seed(123);
 
