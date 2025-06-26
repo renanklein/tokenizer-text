@@ -11,6 +11,8 @@ mod atention;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tch::manual_seed(789);
+
     let data = vec![
         0.43, 0.15, 0.89, 0.55, 0.87, 0.66, 0.57, 0.85, 0.64, 0.22, 0.58, 0.33, 0.77, 0.25, 0.10,
         0.05, 0.80, 0.55,
@@ -18,10 +20,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let shape = [6, 3];
 
-    let tensor = tch::Tensor::from_slice(&data).to_device(tch::Device::cuda_if_available())
-        .view(shape);
+    let tensor = tch::Tensor::from_slice(&data).reshape(shape).to_device(tch::Device::cuda_if_available())
+        .to_dtype(tch::Kind::Float, true, false);
 
-    let attention = atention::Atention::new(3, 2);
+    let attention = atention::Attention::new(3, 2);
 
     let output = attention.forward(&tensor);
 

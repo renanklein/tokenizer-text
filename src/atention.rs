@@ -1,39 +1,50 @@
-use tch::{nn::{self, VarStore}, Device, Tensor};
+use std::fmt::Debug;
 
-pub struct Atention {
-    pub query: Tensor,
-    pub key: Tensor,
-    pub value: Tensor
+use tch::{
+    nn::{self, Module, VarStore},
+    Device, Tensor,
+};
+
+#[derive(Debug)]
+pub struct Attention {
+    query_linear: nn::Linear,
+    key_linear: nn::Linear,
+    value_linear: nn::Linear,
+    d_out: i64,
+    num_head: i64,
+    head_dim: i64
 }
 
-impl Atention {
-    pub fn new(d_in: i64, d_out: i64) -> Self {
-        let vs = VarStore::new(Device::cuda_if_available());
 
-        let query = vs.root().var("weight", &[d_in, d_out], nn::Init::Randn { mean: 0.0, stdev: 1.0 });
-        let key = vs.root().var("weight", &[d_in, d_out], nn::Init::Randn { mean: 0.0, stdev: 1.0 });
-        let value = vs.root().var("weight", &[d_in, d_out], nn::Init::Randn { mean: 0.0, stdev: 1.0 });
+impl Module for Attention {
+    fn forward(&self, input: &Tensor) -> Tensor {
+        let queries = self.query_linear.forward(input);
+        let keys = self.key_linear.forward(input);
+        let values = self.value_linear.forward(input);
 
-        Atention {
-            query,
-            key,
-            value
-        }
-    }
-
-
-    pub fn forward(&self, input: &Tensor) -> Tensor {
-        let queries = input.matmul(&self.query);
-        let mut keys = input.matmul(&self.key);
-        let values = input.matmul(&self.value);
-
-        let attn_scores = queries.matmul(&keys.t_());
-        let scale = (keys.size1().unwrap() as f64).sqrt();
+        let attn_scores = queries.matmul(&keys.tr());
+        let d_k = keys.size()[1] as f64;
+        let scale = d_k.sqrt();
         let scaled_attn_scores = attn_scores / scale;
         let attn_weights = scaled_attn_scores.softmax(-1, tch::Kind::Float);
 
-        let context_vec = attn_weights.matmul(&values);
+        attn_weights
+    }
+}
 
-        context_vec
+impl Attention {
+    pub fn new(d_in: i64, d_out: i64) -> Self {
+        let vs = VarStore::new(Device::cuda_if_available());
+        let root = vs.root();
+
+        let query_linear = nn::linear(&root, d_in, d_out, Default::default());
+        let key_linear = nn::linear(&root, d_in, d_out, Default::default());
+        let value_linear = nn::linear(&root, d_in, d_out, Default::default());
+
+        Attention {
+            query_linear,
+            key_linear,
+            value_linear,
+        }
     }
 }
