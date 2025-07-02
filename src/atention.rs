@@ -43,21 +43,21 @@ impl Attention {
         }
     }
 
-    pub fn forward(&self, input: &Tensor) -> Tensor {
-        let queries = self.query_linear.forward(input);
-        let keys = self.key_linear.forward(input);
-        let values = self.value_linear.forward(input);
+//    pub fn forward(&self, input: &Tensor) -> Tensor {
+//        let queries = self.query_linear.forward(input);
+//        let keys = self.key_linear.forward(input);
+//        let values = self.value_linear.forward(input);
+//
+//        let attn_scores = queries.matmul(&keys.tr());
+//        let d_k = keys.size()[1] as f64;
+//        let scale = d_k.sqrt();
+//        let scaled_attn_scores = attn_scores / scale;
+//        let attn_weights = scaled_attn_scores.softmax(-1, tch::Kind::Float);
+//
+//        attn_weights
+//    }
 
-        let attn_scores = queries.matmul(&keys.tr());
-        let d_k = keys.size()[1] as f64;
-        let scale = d_k.sqrt();
-        let scaled_attn_scores = attn_scores / scale;
-        let attn_weights = scaled_attn_scores.softmax(-1, tch::Kind::Float);
-
-        attn_weights
-    }
-
-    pub fn train(&self, input: Tensor) -> impl ModuleT {
+    pub fn forward(&self, input: Tensor) -> impl ModuleT {
         nn::func_t(move |input, train| {
             let (sz_b, sz_t, sz_c) = input.size3().unwrap();
             let sizes = [sz_b, sz_t, self.num_head, sz_c / self.num_head];
