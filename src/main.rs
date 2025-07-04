@@ -8,6 +8,7 @@ mod data_modifier;
 mod file_utils;
 mod simple_tokenizer;
 mod atention;
+mod architecture;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
