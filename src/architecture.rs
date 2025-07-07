@@ -1,3 +1,5 @@
+use std::f64::consts::PI;
+
 use tch::{nn::{self, VarStore}, Device, Kind, Tensor};
 
 pub struct LayerNorm {
@@ -5,6 +7,8 @@ pub struct LayerNorm {
     shift: Tensor,
     scale: Tensor,
 }
+
+pub struct GELU;
 
 impl LayerNorm {
     pub fn new(emb_dim: i64) -> Self {
@@ -26,5 +30,17 @@ impl LayerNorm {
         let norm_x = (x - mean)/Tensor::sqrt(&(self.eps + var));
 
         &self.scale * norm_x + &self.shift
+    }
+}
+
+impl GELU {
+    pub fn new() -> Self {
+        GELU
+    }
+
+    pub fn foward(&self, x: Tensor) -> Tensor{
+        let part = Tensor::from(2.0 / PI);
+
+        0.5 * &x * (1.0 + Tensor::tanh(&(&part * &(&x + 0.044715 + x.pow_tensor_scalar(3.0)))))
     }
 }
