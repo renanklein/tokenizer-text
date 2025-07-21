@@ -1,8 +1,10 @@
 pub struct Config {
-    d_in: f64,
-    d_out: f64,
-    context_lenght: u32,
-    num_heads: u32,
-    drop_rate: u32,
-    qkv_bias: bool
+    pub d_in: i64,
+    pub d_out: i64,
+    pub context_length: i64,
+    pub num_heads: i64,
+    pub drop_rate: f64,
+    pub emb_dim: i64,
+    pub qkv_bias: bool
+
 }
