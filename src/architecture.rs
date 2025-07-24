@@ -1,6 +1,6 @@
 use std::f64::consts::PI;
 
-use tch::{nn::{self, linear, seq, Linear, Sequential, VarStore}, Device, Kind, Tensor};
+use tch::{nn::{self, linear, seq, Linear, Module, Sequential, VarStore}, Device, Kind, Tensor};
 
 #[derive(Debug)]
 pub struct LayerNorm {
@@ -76,9 +76,8 @@ impl FeedForward {
 
 }
 
-
-//impl nn::Module for FeedForward {
-  //  fn forward(&self, xs: &Tensor) -> Tensor {
-        
-    //}
-//}
+impl Module for FeedForward {
+    fn forward(&self, xs: &Tensor) -> Tensor {
+        self.layers.forward(xs)
+    }
+}
