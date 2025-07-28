@@ -1,8 +1,10 @@
-use tch::Tensor;
+use tch::{nn::Module, Device, Kind, Tensor};
 use tiktoken_rs::{
     get_bpe_from_tokenizer,
     tokenizer::{self, get_tokenizer},
 };
+
+use crate::{config::Config, transformer::Transformer};
 
 mod data_modifier;
 mod file_utils;
@@ -14,24 +16,20 @@ mod transformer;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tch::manual_seed(789);
+    tch::manual_seed(123);
 
-    let data = vec![
-        0.43, 0.15, 0.89, 0.55, 0.87, 0.66, 0.57, 0.85, 0.64, 0.22, 0.58, 0.33, 0.77, 0.25, 0.10,
-        0.05, 0.80, 0.55,
-    ];
+    let emb_dim = 768;
 
-    let shape = [6, 3];
+    let x = Tensor::rand(&[2, 4, 768], (Kind::Float, Device::cuda_if_available()));
 
-    let tensor = tch::Tensor::from_slice(&data).reshape(shape).to_device(tch::Device::cuda_if_available())
-        .to_dtype(tch::Kind::Float, true, false);
+    let gpt_124_m_config = Config::new(emb_dim, emb_dim, 124, 12, 0.0, emb_dim, false);
 
-    let attention = atention::Attention::new(3, 2);
+    let block = Transformer::new(gpt_124_m_config);
 
-    let output = attention.forward(&tensor);
+    let result = block.forward(&x);
 
-    output.print();
-
+    println!("Input size {:?}", x.size());
+    println!("Output size {:?}", result.size());
 
     Ok(())
 }

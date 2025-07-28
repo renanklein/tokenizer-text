@@ -1,10 +1,8 @@
-use std::clone;
-
-use reqwest::redirect::Attempt;
 use tch::{nn::Module, Tensor};
 
 use crate::{architecture::{FeedForward, LayerNorm}, atention::Attention, config::Config};
 
+#[derive(Debug)]
 pub struct Transformer {
     att: Attention,
     ff: FeedForward,
@@ -33,17 +31,23 @@ impl Transformer {
 
 impl Module for Transformer {
     fn forward(&self, xs: &tch::Tensor) -> tch::Tensor {
-        let shortcut = xs.f_clone();
+        let mut normed1 = Tensor::new();
+        let normed2 = Tensor::new();
 
-        let mut cloned = self.norm1.forward(xs);
+        xs.clone(&normed1);
+
+        normed1 = self.norm1.forward(xs);
         normed1 = self.att.forward(xs);
         normed1 = xs.dropout(self.drop_rate, false);
         normed1 += xs;
 
-
+        
+        normed1.clone(&normed2);
         let mut normed2 = self.norm2.forward(xs);
         normed2 = self.ff.forward(xs);
         normed2 = xs.dropout(self.drop_rate, false);
+        normed2 += xs;
 
+        normed2
     }
 }
