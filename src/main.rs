@@ -13,23 +13,11 @@ mod atention;
 mod architecture;
 mod config;
 mod transformer;
-
+mod model;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tch::manual_seed(123);
 
-    let emb_dim = 768;
-
-    let x = Tensor::rand(&[2, 4, 768], (Kind::Float, Device::cuda_if_available()));
-
-    let gpt_124_m_config = Config::new(emb_dim, emb_dim, 124, 12, 0.0, emb_dim, false);
-
-    let block = Transformer::new(gpt_124_m_config);
-
-    let result = block.forward(&x);
-
-    println!("Input size {:?}", x.size());
-    println!("Output size {:?}", result.size());
 
     Ok(())
 }

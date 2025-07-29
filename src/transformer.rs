@@ -1,4 +1,4 @@
-use tch::{nn::Module, Tensor};
+use tch::{nn::Module, Device, Kind, Tensor};
 
 use crate::{architecture::{FeedForward, LayerNorm}, atention::Attention, config::Config};
 
@@ -31,23 +31,9 @@ impl Transformer {
 
 impl Module for Transformer {
     fn forward(&self, xs: &tch::Tensor) -> tch::Tensor {
-        let mut normed1 = Tensor::new();
-        let normed2 = Tensor::new();
+        let result1 = xs + xs.apply(&self.norm1).apply(&self.att).dropout(self.drop_rate, false);
+        let result2 = xs.apply(&self.norm2).apply(&self.ff).dropout(self.drop_rate, false);
 
-        xs.clone(&normed1);
-
-        normed1 = self.norm1.forward(xs);
-        normed1 = self.att.forward(xs);
-        normed1 = xs.dropout(self.drop_rate, false);
-        normed1 += xs;
-
-        
-        normed1.clone(&normed2);
-        let mut normed2 = self.norm2.forward(xs);
-        normed2 = self.ff.forward(xs);
-        normed2 = xs.dropout(self.drop_rate, false);
-        normed2 += xs;
-
-        normed2
+        result1 + result2
     }
 }
