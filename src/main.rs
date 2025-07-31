@@ -18,7 +18,6 @@ mod model;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tch::manual_seed(123);
 
-
     Ok(())
 }
 

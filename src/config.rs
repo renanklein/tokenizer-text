@@ -1,3 +1,4 @@
+#[derive(Clone, Copy)]
 pub struct Config {
     pub d_in: i64,
     pub d_out: i64,
@@ -5,6 +6,8 @@ pub struct Config {
     pub num_heads: i64,
     pub drop_rate: f64,
     pub emb_dim: i64,
+    pub vocab_size: i64,
+    pub num_layers: i64,
     pub qkv_bias: bool,
 }
 
@@ -16,6 +19,8 @@ impl Config {
         num_heads: i64,
         drop_rate: f64,
         emb_dim: i64,
+        vocab_size: i64,
+        num_layers: i64,
         qkv_bias: bool,
     ) -> Self {
         Self {
@@ -25,6 +30,8 @@ impl Config {
             num_heads,
             drop_rate,
             emb_dim,
+            vocab_size,
+            num_layers, 
             qkv_bias,
         }
     }
