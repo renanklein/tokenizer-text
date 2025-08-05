@@ -1,10 +1,10 @@
 use tch::{nn::Module, Device, Kind, Tensor};
 use tiktoken_rs::{
     get_bpe_from_tokenizer,
-    tokenizer::{self, get_tokenizer},
+    tokenizer::{self, get_tokenizer, Tokenizer},
 };
 
-use crate::{config::Config, transformer::Transformer};
+use crate::{config::Config, model::Model, transformer::Transformer};
 
 mod data_modifier;
 mod file_utils;
@@ -16,7 +16,31 @@ mod transformer;
 mod model;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tch::manual_seed(123);
+
+
+    let config = Config::new(768, 768, 1024, 12, 0.1, 768, 50257, 12, false);
+
+    let start_context = "Hello i am";
+    let tokenizer_base = match get_tokenizer("gpt2") {
+        Some(tokenizer) => tokenizer,
+        None => panic!("Tokenizer not found"),
+    };
+
+    let tokenizer = match get_bpe_from_tokenizer(tokenizer_base) {
+        Ok(tokenizer) => tokenizer,
+        Err(e) => panic!("Error getting BPE tokenizer: {}", e),
+    };
+
+    let encoded = tokenizer.encode_with_special_tokens(start_context);
+
+    let encoded_converted: Vec<i64> = encoded.iter().map(|&x| x as i64).collect();
+
+    let encoded_tensor = Tensor::from_slice(&encoded_converted).to_device(Device::cuda_if_available());
+
+    let model = Model::new(config);
+
+    let output = model.generate_text(encoded_tensor, 6, 1024);
+
 
     Ok(())
 }

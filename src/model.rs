@@ -64,16 +64,22 @@ impl Model {
     pub fn generate_text(self, input: Tensor, max_new_tokens: i64, context_size: i64) -> Tensor {
         let mut current = input.copy();
 
-        let next_token =  tch::no_grad(|| {
-            let current_cond = current.slice(-1, -context_size, i64::MAX, 1);
-            for _ in 0..max_new_tokens {
+        for _ in 0..max_new_tokens {
+
+            let next_token =  tch::no_grad(|| {
+                let current_cond = current.slice(-1, -context_size, i64::MAX, 1);
                 let logits = current_cond .apply(&self).i((0, -1, ..));
                 let probas = logits.softmax(-1, Kind::Float);
                 probas.argmax(-1, true)
-            }
-        });
+            });
 
-        Tensor::cat(&[current, next_token], 1)
+
+            current = Tensor::cat(&[current, next_token], 1)
+
+        }
+
+        current
+
     }
 }
 
