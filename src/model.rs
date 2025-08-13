@@ -62,12 +62,15 @@ impl Model {
     }
 
     pub fn generate_text(self, input: Tensor, max_new_tokens: i64, context_size: i64) -> Tensor {
+
         let mut current = input.copy();
 
         for _ in 0..max_new_tokens {
 
-            let next_token =  tch::no_grad(|| {
+            let next_token = tch::no_grad(|| {
+                println!("Init loop");
                 let current_cond = current.slice(-1, -context_size, i64::MAX, 1);
+                println!("current_cond");
                 let logits = current_cond .apply(&self).i((0, -1, ..));
                 let probas = logits.softmax(-1, Kind::Float);
                 probas.argmax(-1, true)
@@ -89,12 +92,18 @@ impl Module for Model {
         let token_emb = self.token_emb.forward(xs);
         let pos_emb = self
             .pos_emb
-            .forward(&Tensor::arange(seq_length, (Kind::Float, xs.device())));
+            .forward(&Tensor::arange(seq_length, (Kind::Int64, xs.device())));
 
-        (token_emb + pos_emb)
-            .dropout(self.drop_rate, false)
-            .apply(&self.trf_blocks)
-            .apply(&self.final_norm)
-            .apply(&self.out_head)
+
+        let test = token_emb + pos_emb;
+
+        let test1 = test.dropout(self.drop_rate, false);
+        println!("Test1");
+        let test2 = test1.apply(&self.trf_blocks);
+        println!("Test2");
+        let test3 = test2.apply(&self.final_norm);
+        println!("Test3");
+
+        test3.apply(&self.out_head)
     }
 }

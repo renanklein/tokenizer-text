@@ -1,10 +1,10 @@
-use tch::{nn::Module, Device, Kind, Tensor};
+use tch::{Device, Tensor};
 use tiktoken_rs::{
     get_bpe_from_tokenizer,
-    tokenizer::{self, get_tokenizer, Tokenizer},
+    tokenizer::{get_tokenizer},
 };
 
-use crate::{config::Config, model::Model, transformer::Transformer};
+use crate::{config::Config, model::Model};
 
 mod data_modifier;
 mod file_utils;
@@ -35,12 +35,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let encoded_converted: Vec<i64> = encoded.iter().map(|&x| x as i64).collect();
 
-    let encoded_tensor = Tensor::from_slice(&encoded_converted).to_device(Device::cuda_if_available());
+    let encoded_tensor = Tensor::from_slice(&encoded_converted).to_device(Device::cuda_if_available()).unsqueeze(0);
 
     let model = Model::new(config);
 
     let output = model.generate_text(encoded_tensor, 6, 1024);
 
+    println!("output generated ...");
+    println!("{:?}", output);
 
     Ok(())
 }
