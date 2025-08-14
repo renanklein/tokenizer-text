@@ -18,7 +18,7 @@ mod model;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 
-    let config = Config::new(768, 768, 1024, 12, 0.1, 768, 50257, 12, false);
+    let config = Config::new(768, 768, 1024, 12, 0.1, 768, 50257, 12 ,false);
 
     let start_context = "Hello i am";
     let tokenizer_base = match get_tokenizer("gpt2") {
@@ -41,8 +41,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let output = model.generate_text(encoded_tensor, 6, 1024);
 
-    println!("output generated ...");
-    println!("{:?}", output);
+    let token_ids: Vec<u32> = output.unsqueeze(0).try_into().unwrap();
+
+    let decoded = tokenizer.decode(token_ids);
 
     Ok(())
 }

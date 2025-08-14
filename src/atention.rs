@@ -29,11 +29,13 @@ impl Attention {
         let value_linear = nn::linear(&root, d_in, d_out, Default::default());
         let out_proj = nn::linear(&root, d_in, d_out, Default::default());
         let head_dim = d_out / num_head as i64;
-        let mask_init = Tensor::ones(
+        let mut mask_init = Tensor::ones(
             [context_length, context_length],
             (Kind::Float, Device::cuda_if_available()),
         )
         .tril(1);
+
+        mask_init = mask_init.view([1, 1, context_length, context_length]);
 
         Attention {
             query_linear,
@@ -51,19 +53,13 @@ impl Attention {
 
 impl nn::Module for Attention {
     fn forward(&self, input: &Tensor) -> Tensor {
-        println!("Multi head attention incoming ...");
         let (sz_b, sz_t, sz_c) = input.size3().unwrap();
-        println!("Aqui 1");
         let sizes = [sz_b, sz_t, self.num_head, sz_c / self.num_head];
-        println!("Aqui 2");
         let k = input.apply(&self.key_linear).view(sizes).transpose(1, 2);
-        println!("Aqui 3");
         let q = input.apply(&self.query_linear).view(sizes).transpose(1, 2);
-        println!("Aqui 4");
         let v = input.apply(&self.value_linear).view(sizes).transpose(1, 2);
-        println!("Aqui 5");
         let mut att_scores = q.matmul(&(&k.transpose(-2, -1) * (1.0 / f64::sqrt(sizes[3] as f64))));
-        println!("Aqui 6");
+
         att_scores = att_scores.masked_fill(
             &self.mask_init.i((.., .., ..sz_t, ..sz_t)).eq(0.),
             f64::NEG_INFINITY,
