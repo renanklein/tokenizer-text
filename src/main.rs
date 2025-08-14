@@ -14,6 +14,7 @@ mod architecture;
 mod config;
 mod transformer;
 mod model;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
@@ -39,11 +40,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let model = Model::new(config);
 
-    let output = model.generate_text(encoded_tensor, 6, 1024);
+    let output = model.generate_text(encoded_tensor, 6, 1024).squeeze();
 
-    let token_ids: Vec<u32> = output.unsqueeze(0).try_into().unwrap();
+    let token_ids: Vec<i32> = output.try_into().unwrap();
 
-    let decoded = tokenizer.decode(token_ids);
+    let converted_token_ids : Vec<u32> = token_ids.iter().into_iter().map(|x| *x as u32).collect();
+
+    let decoded = tokenizer.decode(converted_token_ids).unwrap();
+
+    println!("{:?}", decoded);
 
     Ok(())
 }

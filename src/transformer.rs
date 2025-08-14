@@ -32,11 +32,8 @@ impl Transformer {
 impl Module for Transformer {
     fn forward(&self, xs: &tch::Tensor) -> tch::Tensor {
 
-        println!("Applying transformer result1");
-
         let result1 = xs + xs.apply(&self.norm1).apply(&self.att).dropout(self.drop_rate, false);
 
-        println!("Applying result2");
         let result2 = xs.apply(&self.norm2).apply(&self.ff).dropout(self.drop_rate, false);
 
         result1 + result2

@@ -65,7 +65,6 @@ impl nn::Module for Attention {
             f64::NEG_INFINITY,
         );
 
-        println!("Calculating att weights !!!!");
         let att_weights = att_scores
             .softmax(-1, Kind::Float)
             .dropout(self.dropout_p, true);
