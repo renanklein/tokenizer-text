@@ -19,7 +19,7 @@ mod model;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 
-    let config = Config::new(768, 768, 1024, 12, 0.1, 768, 50257, 12 ,false);
+    let config = Config::new(768, 768, 256, 12, 0.1, 768, 50257, 12 ,false);
 
     let start_context = "Hello i am";
     let tokenizer_base = match get_tokenizer("gpt2") {
@@ -32,21 +32,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => panic!("Error getting BPE tokenizer: {}", e),
     };
 
-    let encoded = tokenizer.encode_with_special_tokens(start_context);
-
-    let encoded_converted: Vec<i64> = encoded.iter().map(|&x| x as i64).collect();
-
-    let encoded_tensor = Tensor::from_slice(&encoded_converted).to_device(Device::cuda_if_available()).unsqueeze(0);
-
     let model = Model::new(config);
+
+    let encoded_tensor = model.text_to_tensor(start_context.to_string());
 
     let output = model.generate_text(encoded_tensor, 6, 1024).squeeze();
 
-    let token_ids: Vec<i32> = output.try_into().unwrap();
-
-    let converted_token_ids : Vec<u32> = token_ids.iter().into_iter().map(|x| *x as u32).collect();
-
-    let decoded = tokenizer.decode(converted_token_ids).unwrap();
+    let decoded = model.logits_to_text(output);
 
     println!("{:?}", decoded);
 

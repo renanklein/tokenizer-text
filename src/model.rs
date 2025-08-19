@@ -1,8 +1,11 @@
 use tch::{
-    nn::{
-        embedding, linear, seq, Embedding, EmbeddingConfig, Linear, Module, Sequential, VarStore,
-    },
-    Device, IndexOp, Kind, Shape, Tensor,
+    nn::{embedding, linear, seq, Embedding, Linear, Module, Sequential, VarStore},
+    Device, IndexOp, Kind, Tensor,
+};
+use tiktoken_rs::{
+    get_bpe_from_tokenizer,
+    tokenizer::{self, get_tokenizer},
+    CoreBPE,
 };
 
 use crate::{architecture::LayerNorm, config::Config, transformer::Transformer};
@@ -61,25 +64,55 @@ impl Model {
         }
     }
 
-    pub fn generate_text(self, input: Tensor, max_new_tokens: i64, context_size: i64) -> Tensor {
+    fn get_tokenizer(&self) -> CoreBPE {
+        let tokenizer_base = match get_tokenizer("gpt2") {
+            Some(tokenizer) => tokenizer,
+            None => panic!("Tokenizer not found"),
+        };
 
+        match get_bpe_from_tokenizer(tokenizer_base) {
+            Ok(tokenizer) => tokenizer,
+            Err(e) => panic!("Error getting BPE tokenizer: {}", e),
+        }
+    }
+
+    pub fn text_to_tensor(&self, start_context: String) -> Tensor {
+        let tokenizer = self.get_tokenizer();
+        let encoded = tokenizer.encode_with_special_tokens(&start_context);
+
+        let encoded_converted: Vec<i64> = encoded.iter().map(|&x| x as i64).collect();
+
+        Tensor::from_slice(&encoded_converted)
+            .to_device(Device::cuda_if_available())
+            .unsqueeze(0)
+    }
+
+    pub fn logits_to_text(&self, logits: Tensor) -> String {
+        let tokenizer = self.get_tokenizer();
+
+        let token_ids: Vec<i32> = logits.try_into().unwrap();
+
+        let converted_token_ids: Vec<u32> =
+            token_ids.iter().into_iter().map(|x| *x as u32).collect();
+
+        tokenizer.decode(converted_token_ids).unwrap()
+    }
+
+    pub fn generate_text(&self, input: Tensor, max_new_tokens: i64, context_size: i64) -> Tensor {
         let mut current = input.copy();
 
         for _ in 0..max_new_tokens {
-
             let next_token = tch::no_grad(|| {
                 let current_cond = current.slice(-1, -context_size, i64::MAX, 1);
-                let logits = current_cond .apply(&self).i((.. , -1, ..));
+                let logits = current_cond.apply(self).i((.., -1, ..));
                 let probas = logits.softmax(-1, Kind::Float);
                 probas.argmax(-1, true)
             });
 
             current = Tensor::cat(&[current, next_token], 1)
-
         }
 
         current
-
     }
 }
 
@@ -90,7 +123,6 @@ impl Module for Model {
         let pos_emb = self
             .pos_emb
             .forward(&Tensor::arange(seq_length, (Kind::Int64, xs.device())));
-
 
         let test = token_emb + pos_emb;
 
