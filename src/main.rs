@@ -1,27 +1,31 @@
-use tch::{Device, Tensor};
-use tiktoken_rs::{
-    get_bpe_from_tokenizer,
-    tokenizer::{get_tokenizer},
-};
+use tch::{nn::{self, Module}, Device, Tensor};
+use tiktoken_rs::{get_bpe_from_tokenizer, tokenizer::get_tokenizer};
 
 use crate::{config::Config, model::Model};
 
+mod architecture;
+mod atention;
+mod config;
 mod data_modifier;
 mod file_utils;
-mod simple_tokenizer;
-mod atention;
-mod architecture;
-mod config;
-mod transformer;
 mod model;
+mod simple_tokenizer;
+mod transformer;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let config = Config::new(768, 768, 256, 12, 0.1, 768, 50257, 12, false);
+
+    let text = get_text_from_file("the-verdict.txt").await?;
+
+    let train_ratio = 0.9;
+
+    let total_chars = text.chars().count();
+    let split_idx = (total_chars as f64 * train_ratio).round() as usize;
+    let train_text: String = text.chars().take(split_idx).collect();
+    let val_text: String = text.chars().skip(split_idx).collect();
 
 
-    let config = Config::new(768, 768, 256, 12, 0.1, 768, 50257, 12 ,false);
-
-    let start_context = "Hello i am";
     let tokenizer_base = match get_tokenizer("gpt2") {
         Some(tokenizer) => tokenizer,
         None => panic!("Tokenizer not found"),
@@ -32,15 +36,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => panic!("Error getting BPE tokenizer: {}", e),
     };
 
-    let model = Model::new(config);
-
-    let encoded_tensor = model.text_to_tensor(start_context.to_string());
-
-    let output = model.generate_text(encoded_tensor, 6, 1024).squeeze();
-
-    let decoded = model.logits_to_text(output);
-
-    println!("{:?}", decoded);
+    let dataset_train = data_modifier::GPTDatasetV1::new(&tokenizer, train_text, 256, 256);
+    let dataset_val  = data_modifier::GPTDatasetV1::new(&tokenizer, val_text, 256, 256);
 
     Ok(())
 }
@@ -51,43 +48,11 @@ async fn get_text_from_file(file_path: &str) -> Result<String, Box<dyn std::erro
     Ok(file_content)
 }
 
-async fn test_tokenizer_chapter2() -> Result<(), Box<dyn std::error::Error>> {
-    let text = get_text_from_file("the-verdict.txt").await?;
-    let tokenizer_base = match get_tokenizer("gpt2") {
-        Some(tokenizer) => tokenizer,
-        None => panic!("Tokenizer not found"),
-    };
+fn calc_loss_batch(input_batch: Tensor, target_batch: Tensor, model: &Model) -> Tensor {
 
-    let tokenizer = match get_bpe_from_tokenizer(tokenizer_base) {
-        Ok(tokenizer) => tokenizer,
-        Err(e) => panic!("Error getting BPE tokenizer: {}", e),
-    };
+    let logits = model.forward(&input_batch);
 
-    let dataset = data_modifier::GPTDatasetV1::new(tokenizer, text, 4, 4);
+    logits.flatten(0, 1).cross_entropy_for_logits(&target_batch.flatten(0, 0))
 
-    let input_tensor = dataset.get_input_tensor_batch(8);
-    input_tensor.print();
-
-    let vocab_size: i64 = 50257;
-    let output_dim: i64 = 256;
-    let var_store = tch::nn::VarStore::new(tch::Device::cuda_if_available());
-    let embedding_config = tch::nn::EmbeddingConfig {
-        sparse: false,
-        scale_grad_by_freq: false,
-        ws_init: tch::nn::Init::Randn {
-            mean: 0.0,
-            stdev: 1.0,
-        },
-        padding_idx: -1,
-    };
-
-    tch::manual_seed(123);
-
-    let embbeding_layer =
-        tch::nn::embedding(&var_store.root(), vocab_size, output_dim, embedding_config);
-
-    let pos_embedding_layer =
-        tch::nn::embedding(&var_store.root(), 4, output_dim, embedding_config);
-
-    Ok(())
 }
+

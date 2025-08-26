@@ -7,7 +7,7 @@ pub struct GPTDatasetV1 {
 }
 
 impl GPTDatasetV1 {
-     pub fn new(tokenizer: CoreBPE, text: String, max_length: u32, stride: u32) -> Self {
+     pub fn new(tokenizer: &CoreBPE, text: String, max_length: u32, stride: u32) -> Self {
         let device = tch::Device::cuda_if_available();
         let mut input_ids = Vec::new();
         let mut target_ids = Vec::new();
