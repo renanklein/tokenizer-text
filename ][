@@ -43,9 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let model = Model::new(config);
     let train_size = dataset_train.input_ids.len();
 
-    let total_loss = call_loss_loader(dataset_train, model, train_size);
-
-    println!("Total loss entropy {:?}", total_loss);
+    call_loss_loader(dataset_train, model, train_size);
     Ok(())
 }
 
@@ -57,30 +55,31 @@ async fn get_text_from_file(file_path: &str) -> Result<String, Box<dyn std::erro
 
 fn calc_loss_batch(input_batch: Tensor, target_batch: Tensor, model: &Model) -> Tensor {
 
+    println!("Logits from models");
+
     let logits = model.forward(&input_batch);
 
-    let targets = target_batch.to_kind(tch::Kind::Int64).flatten(0, 1);
+    println!("calculation loss from logits ... ");
 
-    logits.flatten(0, 1).cross_entropy_for_logits(&targets)
+    logits.flatten(0, 1).cross_entropy_for_logits(&target_batch.flatten(0, 0))
 
 }
 
-fn call_loss_loader(dataset: GPTDatasetV1, model: Model, mut num_batch: usize) -> f64{
+fn call_loss_loader(dataset: GPTDatasetV1, model: Model, mut num_batch: usize){
     let mut total_loss = 0.;
     let dataset_len = dataset.input_ids.len();
+    println!("Dataset_len !!!");
     num_batch = num_batch.min(dataset_len);
 
     for i in 0..dataset_len {
+        println!("Getting tuple from dataset !!!");
         let batch_tuple = dataset.get_item(i);
 
         if i < num_batch {
+            println!("Calculating loss !!!");
             let loss = calc_loss_batch(batch_tuple.0, batch_tuple.1, &model);
-
-            let loss_value: f64 = loss.try_into().unwrap();
-            total_loss += loss_value;
+            loss.print();
         }
     }
-
-    total_loss/(num_batch as f64)
 
 }

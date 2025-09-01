@@ -15,14 +15,15 @@ impl GPTDatasetV1 {
         let encoded = tokenizer.encode_with_special_tokens(text.as_str());
 
         for i in (0..(encoded.len() as u32 - max_length)).step_by(stride as usize) {
+            // Convert token ids to i64 (Int64) because embeddings and loss functions expect long tensors
             let input_chunk = encoded[i as usize..(i + max_length) as usize]
                 .into_iter()
-                .map(|x| *x as i32)
+                .map(|x| *x as i64)
                 .collect::<Vec<_>>();
 
             let target_chunk = encoded[(i + 1) as usize..(i + max_length + 1) as usize]
                 .into_iter()
-                .map(|x| *x as i32)
+                .map(|x| *x as i64)
                 .collect::<Vec<_>>();
 
             let input_tersor = Tensor::from_slice(&input_chunk).to_device(device);
@@ -30,7 +31,6 @@ impl GPTDatasetV1 {
 
             input_ids.push(input_tersor);
             target_ids.push(target_tensor);
-
 
         }
          Self {
@@ -40,8 +40,8 @@ impl GPTDatasetV1 {
     }
 
     pub fn get_item(&self, index: usize) -> (Tensor, Tensor) {
-        let input = self.input_ids[index].copy();
-        let target = self.target_ids[index].copy();
+        let input = self.input_ids[index].copy().unsqueeze(0);
+        let target = self.target_ids[index].copy().unsqueeze(0);
         (input, target)
     }
 
