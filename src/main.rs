@@ -1,6 +1,6 @@
-use ai_dataloader::Len;
-use tch::{data::TextData, nn::{self, AdamW, Module, Optimizer, OptimizerConfig, VarStore}, Device, Kind, Tensor};
+use tch::{data::TextData, nn::{self, AdamW, Module, OptimizerConfig, VarStore}, Device, Kind, Tensor};
 use tiktoken_rs::{get_bpe_from_tokenizer, tokenizer::get_tokenizer};
+use std::env;
 
 use crate::{config::Config, data_modifier::GPTDatasetV1, model::Model};
 
@@ -15,15 +15,18 @@ mod transformer;
 
 
 const LEARNING_RATE: f64 = 0.0003;
-const EPOCHS: i64 = 100;
-const NO_WEIGHT_DECAY_GROUP: usize = 0;
-const WEIGHT_DECAY_GROUP: usize = 1;
-const BLOCK_SIZE: i64 = 128;
+const EPOCHS: i64 = 10;
+const BLOCK_SIZE: i64 = 128; // Context window size for training chunks
 
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let config = Config::new(768, 768, 256, 12, 0.1, 768, 50257, 12, false);
+    let small_model = env::var("SMALL_MODEL").is_ok();
+    let config = if small_model {
+        Config::new(256, 256, 128, 4, 0.1, 256, 50257, 4, false)
+    } else {
+        Config::new(768, 768, 256, 12, 0.1, 768, 50257, 12, false)
+    };
 
     let text = get_text_from_file("the-verdict.txt").await?;
 
@@ -48,9 +51,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let data = TextData::new("the-verdict.txt")?;
 
-    let model = Model::new(config);
+    let device = Device::cuda_if_available();
 
-    train(data, model, Device::cuda_if_available());
+    let vs = VarStore::new(device);
+    let root = vs.root();
+    let model = Model::new(&root, config);
+
+    let max_steps: usize = env::var("MAX_STEPS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(500); // default
+
+    train(data, &model, &vs, device, max_steps);
 
 
 
@@ -82,12 +94,9 @@ fn calc_loss_batch(input_batch: &Tensor, target_batch: &Tensor, model: &Model) -
 }
 
 
-fn train (data: TextData, model: Model, device: Device) {
-    let vs = VarStore::new(device);
-    let mut optimizer = AdamW::default().build(&vs, LEARNING_RATE).unwrap();
-
-    //optimizer.set_weight_decay_group(WEIGHT_DECAY_GROUP, 0.1);
-    //optimizer.set_weight_decay_group(NO_WEIGHT_DECAY_GROUP, 0.0);
+fn train (data: TextData, model: &Model, vs: &VarStore, device: Device, max_steps: usize) {
+    let mut optimizer = AdamW::default().build(vs, LEARNING_RATE).unwrap();
+    // Removed weight decay group settings to avoid out-of-range panic; customize groups if added later.
 
 
     let mut idx = 0;
@@ -112,8 +121,12 @@ fn train (data: TextData, model: Model, device: Device) {
             idx += 1;
 
             if idx % 10000 == 0 {
-                println!("Epoch : {:?} and loss {:5.3}", epoch, sum_loss/cnt_loss);
-                
+                println!("Epoch : {:?} step {} loss {:5.3}", epoch, idx, sum_loss/cnt_loss);
+            }
+
+            if idx >= max_steps {
+                println!("Reached max_steps {}. Stopping early to avoid OOM.", max_steps);
+                return;
             }
 
 

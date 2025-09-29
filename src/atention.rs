@@ -2,8 +2,8 @@ use core::f64;
 use std::fmt::Debug;
 
 use tch::{
-    nn::{self, VarStore},
-    Device, IndexOp, Kind, Tensor,
+    nn::{self},
+    IndexOp, Kind, Tensor,
 };
 
 #[derive(Debug)]
@@ -20,18 +20,15 @@ pub struct Attention {
 }
 
 impl Attention {
-    pub fn new(d_in: i64, d_out: i64, num_head: i64, context_length: i64, dropout_p: f64) -> Self {
-        let vs = VarStore::new(Device::cuda_if_available());
-        let root = vs.root();
-
-        let query_linear = nn::linear(&root, d_in, d_out, Default::default());
-        let key_linear = nn::linear(&root, d_in, d_out, Default::default());
-        let value_linear = nn::linear(&root, d_in, d_out, Default::default());
-        let out_proj = nn::linear(&root, d_in, d_out, Default::default());
+    pub fn new(path: &nn::Path, d_in: i64, d_out: i64, num_head: i64, context_length: i64, dropout_p: f64) -> Self {
+        let query_linear = nn::linear(path, d_in, d_out, Default::default());
+        let key_linear = nn::linear(path, d_in, d_out, Default::default());
+        let value_linear = nn::linear(path, d_in, d_out, Default::default());
+        let out_proj = nn::linear(path, d_in, d_out, Default::default());
         let head_dim = d_out / num_head as i64;
         let mut mask_init = Tensor::ones(
             [context_length, context_length],
-            (Kind::Float, Device::cuda_if_available()),
+            (Kind::Float, path.device()),
         )
         .tril(1);
 

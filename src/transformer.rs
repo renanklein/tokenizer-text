@@ -1,4 +1,4 @@
-use tch::{nn::Module, Device, Kind, Tensor};
+use tch::{nn::{self, Module}, Tensor};
 
 use crate::{architecture::{FeedForward, LayerNorm}, atention::Attention, config::Config};
 
@@ -12,19 +12,11 @@ pub struct Transformer {
 }
 
 impl Transformer {
-    pub fn new(cfg: Config) -> Self {
-        let att = Attention::new(
-            cfg.d_in,
-            cfg.d_out,
-            cfg.num_heads,
-            cfg.context_length,
-            cfg.drop_rate
-        );
-
-        let ff = FeedForward::new(cfg.emb_dim);
-        let norm1 = LayerNorm::new(cfg.emb_dim);
-        let norm2 = LayerNorm::new(cfg.emb_dim);
-
+    pub fn new(path: &nn::Path, cfg: Config) -> Self {
+        let att = Attention::new(&(path / "att"), cfg.d_in, cfg.d_out, cfg.num_heads, cfg.context_length, cfg.drop_rate);
+        let ff = FeedForward::new(&(path / "ff"), cfg.emb_dim);
+        let norm1 = LayerNorm::new(&(path / "ln1"), cfg.emb_dim);
+        let norm2 = LayerNorm::new(&(path / "ln2"), cfg.emb_dim);
         Transformer { att, ff, norm1, norm2, drop_rate: cfg.drop_rate }
     }
 }

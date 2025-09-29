@@ -1,5 +1,5 @@
 use tch::{
-    nn::{embedding, linear, seq, Embedding, Linear, Module, Sequential, VarStore},
+    nn::{self, embedding, linear, seq, Embedding, Linear, Module, Sequential},
     Device, IndexOp, Kind, Tensor,
 };
 use tiktoken_rs::{
@@ -21,34 +21,30 @@ pub struct Model {
 }
 
 impl Model {
-    pub fn new(cfg: Config) -> Self {
-        let vs = VarStore::new(Device::cuda_if_available());
-        let root = vs.root();
-
+    pub fn new(root: &nn::Path, cfg: Config) -> Self {
         let token_emb = embedding(
-            &root / "token_emb",
+            &(root / "token_emb"),
             cfg.vocab_size,
             cfg.emb_dim,
             Default::default(),
         );
         let pos_emb = embedding(
-            &root / "pos_emb",
+            &(root / "pos_emb"),
             cfg.context_length,
             cfg.emb_dim,
             Default::default(),
         );
 
         let mut trf_blocks = seq();
-
-        for _ in 0..cfg.num_layers {
-            let trf = Transformer::new(cfg.clone());
+        for layer_idx in 0..cfg.num_layers {
+            let trf = Transformer::new(&(root / format!("block_{}", layer_idx)), cfg.clone());
             trf_blocks = trf_blocks.add(trf);
         }
 
-        let final_norm = LayerNorm::new(cfg.emb_dim);
+        let final_norm = LayerNorm::new(&(root / "final_norm"), cfg.emb_dim);
 
         let out_head = linear(
-            &root / "head",
+            &(root / "head"),
             cfg.emb_dim,
             cfg.vocab_size,
             Default::default(),
