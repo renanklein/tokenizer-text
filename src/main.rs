@@ -15,8 +15,8 @@ mod transformer;
 
 
 const LEARNING_RATE: f64 = 0.0003;
-const EPOCHS: i64 = 10;
-const BLOCK_SIZE: i64 = 128; // Context window size for training chunks
+const EPOCHS: i64 = 3;
+const BLOCK_SIZE: i64 = 32; // Context window size for training chunks
 
 
 #[tokio::main]
