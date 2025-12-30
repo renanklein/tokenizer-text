@@ -21,12 +21,7 @@ const BLOCK_SIZE: i64 = 32; // Context window size for training chunks
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let small_model = env::var("SMALL_MODEL").is_ok();
-    let config = if small_model {
-        Config::new(256, 256, 128, 4, 0.1, 256, 50257, 4, false)
-    } else {
-        Config::new(768, 768, 256, 12, 0.1, 768, 50257, 12, false)
-    };
+    let config = Config::new(768, 768, 256, 12, 0.1, 768, 50257, 12, false);
 
     let text = get_text_from_file("the-verdict.txt").await?;
 
@@ -64,13 +59,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     train(data, &model, &vs, device, max_steps);
 
+    let prompt = String::from("Every effort moves you");
 
+    let result_logits = model.generate_text(model.text_to_tensor(prompt), 15, 256, 25, 1.4);
 
-    let dataset_train = data_modifier::GPTDatasetV1::new(&tokenizer, train_text, 256, 256);
-    let dataset_val  = data_modifier::GPTDatasetV1::new(&tokenizer, val_text, 256, 256);
+    let result_text = model.logits_to_text(result_logits);
 
-    let train_size = dataset_train.input_ids.len();
-
+    println!("{}", result_text);
 
 
     Ok(())

@@ -94,15 +94,21 @@ impl Model {
         tokenizer.decode(converted_token_ids).unwrap()
     }
 
-    pub fn generate_text(&self, input: Tensor, max_new_tokens: i64, context_size: i64) -> Tensor {
+    pub fn generate_text(&self, input: Tensor, max_new_tokens: i64, context_size: i64, temperature: f64, topK: i64) -> Tensor {
         let mut current = input.copy();
 
         for _ in 0..max_new_tokens {
             let next_token = tch::no_grad(|| {
                 let current_cond = current.slice(-1, -context_size, i64::MAX, 1);
                 let logits = current_cond.apply(self).i((.., -1, ..));
-                let probas = logits.softmax(-1, Kind::Float);
-                probas.argmax(-1, true)
+
+                let (top_logits, _) = logits.topk(topK, -1, true, true);
+
+                let scaled_logits = top_logits / temperature;
+
+                let probas = scaled_logits.softmax(-1, Kind::Float);
+
+                probas.multinomial(1, true)
             });
 
             current = Tensor::cat(&[current, next_token], 1)
