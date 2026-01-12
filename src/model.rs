@@ -60,7 +60,7 @@ impl Model {
         }
     }
 
-    fn get_tokenizer(&self) -> CoreBPE {
+    pub fn get_tokenizer(&self) -> CoreBPE {
         let tokenizer_base = match get_tokenizer("gpt2") {
             Some(tokenizer) => tokenizer,
             None => panic!("Tokenizer not found"),
@@ -86,7 +86,7 @@ impl Model {
     pub fn logits_to_text(&self, logits: Tensor) -> String {
         let tokenizer = self.get_tokenizer();
 
-        let token_ids: Vec<i32> = logits.try_into().unwrap();
+        let token_ids: Vec<i32> = logits.view([-1]).try_into().unwrap();
 
         let converted_token_ids: Vec<u32> =
             token_ids.iter().into_iter().map(|x| *x as u32).collect();
@@ -115,6 +115,28 @@ impl Model {
         }
 
         current
+    }
+
+    pub fn generate_text2(&self, input: Tensor, max_new_tokens: i64, context_size: i64) -> String{
+        let mut input = input;
+
+        let mut result :String = String::new();
+
+        for _index in 0..max_new_tokens {
+            
+            let logits = input.apply(self).i((0, -1, ..));
+            let sampled_y = logits.softmax(-1, Kind::Float).multinomial(1, true);
+            let sampled_string = self.logits_to_text(sampled_y.copy());
+            result.push_str(&sampled_string);
+            input = Tensor::cat(&[input, sampled_y.view([1,1])], 1);
+            let (_, seq_len) = input.size2().unwrap();
+            if seq_len > context_size {
+                input = input.narrow(1, seq_len - context_size, context_size);
+            }
+        }
+
+        result
+
     }
 }
 
