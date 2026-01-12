@@ -46,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let result_logits = model.generate_text(model.text_to_tensor(prompt), 15, 256, 1.4, 25);
 
-    let result  = model.logits_to_text(result_logits);
+    let result = model.logits_to_text(result_logits);
 
     println!("{}", result);
 

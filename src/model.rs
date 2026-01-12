@@ -94,52 +94,35 @@ impl Model {
         tokenizer.decode(converted_token_ids).unwrap()
     }
 
-    pub fn generate_text(&self, input: Tensor, max_new_tokens: i64, context_size: i64, temperature: f64, topK: i64) -> Tensor {
+    pub fn generate_text(
+        &self,
+        input: Tensor,
+        max_new_tokens: i64,
+        context_size: i64,
+        temperature: f64,
+        top_k: i64
+    ) -> Tensor {
         let mut current = input.copy();
 
         for _ in 0..max_new_tokens {
-            let next_token = tch::no_grad(|| {
-                let current_cond = current.slice(-1, -context_size, i64::MAX, 1);
-                let logits = current_cond.apply(self).i((.., -1, ..));
+            let current_cond = current.slice(-1, -context_size, i64::MAX, 1);
+            let logits = current_cond.apply(self).i((.., -1, ..));
 
-                let (top_logits, _) = logits.topk(topK, -1, true, true);
+            //let (top_logits, _) = logits.topk(top_k, -1, true, true);
+            
+            //let scaled_logits = top_logits / temperature;
 
-                let scaled_logits = top_logits / temperature;
+            let probas = logits.softmax(-1, Kind::Float).multinomial(1, true);
 
-                let probas = scaled_logits.softmax(-1, Kind::Float);
-
-                probas.multinomial(1, true)
-            });
-
-            current = Tensor::cat(&[current, next_token], 1)
+            current = Tensor::cat(&[current, probas], 1)
         }
 
         current
     }
 
-    pub fn generate_text2(&self, input: Tensor, max_new_tokens: i64, context_size: i64) -> String{
-        let mut input = input;
-
-        let mut result :String = String::new();
-
-        for _index in 0..max_new_tokens {
-            
-            let logits = input.apply(self).i((0, -1, ..));
-            let sampled_y = logits.softmax(-1, Kind::Float).multinomial(1, true);
-            let sampled_string = self.logits_to_text(sampled_y.copy());
-            result.push_str(&sampled_string);
-            input = Tensor::cat(&[input, sampled_y.view([1,1])], 1);
-            let (_, seq_len) = input.size2().unwrap();
-            if seq_len > context_size {
-                input = input.narrow(1, seq_len - context_size, context_size);
-            }
-        }
-
-        result
-
-    }
 }
 
+    
 impl Module for Model {
     fn forward(&self, xs: &Tensor) -> Tensor {
         let (_, seq_length) = xs.size2().unwrap();
